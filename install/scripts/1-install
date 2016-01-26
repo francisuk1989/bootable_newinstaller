@@ -32,7 +32,7 @@ choose()
 partition_drive()
 {
 	echo -n > $menufile
-	for i in /sys/block/[shv]d[a-z] /sys/block/mmcblk?; do
+	for i in /sys/block/[shv]d[a-z] /sys/block/xvd[a-z] /sys/block/mmcblk?; do
 		if [ ! -d $i ]; then  # pathname expansion failed
 			continue
 		fi
@@ -138,7 +138,8 @@ create_menulst()
 {
 	menulst=/hd/grub/menu.lst
 	[ -n "$VESA" ] && vga=" vga=788 modeset=0"
-	echo -e "${GRUB_OPTIONS:-default=0\ntimeout=6\nsplashimage=/grub/android-x86.xpm.gz\n}root (hd0,$1)\n" > $menulst
+	# echo -e "${GRUB_OPTIONS:-default=0\ntimeout=6\nsplashimage=/grub/android-x86.xpm.gz\n}root (hd0,$1)\n" > $menulst
+	echo -e "${GRUB_OPTIONS:-default=0\ntimeout=6\n}root (hd0,$1)\n" > $menulst
 	cmdline=`cat /proc/cmdline | sed "s|\(initrd.*img\s*\)||; s|quiet\s*||; s|\(vga=\w\+\?\s*\)||; s|\(DPI=\w\+\?\s*\)||; s|\(INSTALL=\w\+\?\s*\)||; s|\(SRC=\S\+\?\s*\)||; s|\(DEBUG=\w\+\?\s*\)||; s|\(BOOT_IMAGE.*\)||"`
 
 	create_entry "Android-x86 $VER" quiet $cmdline
@@ -237,11 +238,37 @@ install_to()
 		d=0
 		while [ 1 ]; do
 			h=`echo $d | awk '{ printf("%c", $1+97) }'`
-			[ -d /sys/block/[shv]d$h/$1 ] && break
+			([ -d /sys/block/[shv]d$h/$1 ] || [ -d /sys/block/xvd$h/$1 ]) && break
 			d=$(($d+1))
 		done
-		p=$((`echo $1 | cut -b4-`-1))
-		disk=`echo $1 | cut -b-3`
+		
+		p=1
+		disk="xvda"
+		
+		echo "Parameter=$1" > /dev/tty5
+		case "$1" in
+			xvd*)
+				p=$((`echo $1 | cut -b5-`-1));
+				disk=`echo $1 | cut -b-4`;
+				;;
+			*)
+				p=$((`echo $1 | cut -b4-`-1));
+				disk=`echo $1 | cut -b-3`;
+				;;
+		esac
+		
+		# Fix for Xen drives
+		#if [[ "$1" == *"xvd"* ]]; then
+		#	p=$((`echo $1 | cut -b5-`-1));
+		#	disk=`echo $1 | cut -b-4`;
+		#else
+		#	p=$((`echo $1 | cut -b4-`-1));
+		#	disk=`echo $1 | cut -b-3`;
+		#fi
+
+		echo "p=$p" > /dev/tty5
+		echo "disk=$disk" > /dev/tty5
+		
 		create_menulst $p
 		create_winitem $1 $d
 		rm -f /hd/boot/grub/stage1
@@ -304,7 +331,7 @@ install_hd()
 	select_dev || rebooting
 	retval=1
 	case "$choice" in
-		[shvm][dm]*)
+		[shvm][dm]*|xvd*)
 			install_to $choice
 			retval=$?
 			;;
