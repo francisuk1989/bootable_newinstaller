@@ -23,7 +23,7 @@ LOCAL_STATIC_LIBRARIES := libdiskconfig_host libcutils liblog
 edit_mbr := $(HOST_OUT_EXECUTABLES)/$(LOCAL_MODULE)
 include $(BUILD_HOST_EXECUTABLE)
 
-VER ?= $(shell date +"%F")
+VER ?= $$(date +"%F")
 
 $(shell echo "OpenThos Release Note" >$(PRODUCT_OUT)/system/ReleaseNote.txt)
 $(shell echo "" >>$(PRODUCT_OUT)/system/ReleaseNote.txt)
