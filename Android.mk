@@ -69,7 +69,14 @@ BUILT_IMG := $(addprefix $(PRODUCT_OUT)/,ramdisk.img initrd.img install.img) $(s
 BUILT_IMG += $(if $(TARGET_PREBUILT_KERNEL),$(TARGET_PREBUILT_KERNEL),$(PRODUCT_OUT)/kernel)
 
 ISO_IMAGE := $(PRODUCT_OUT)/$(BLISS_VERSION).iso
-$(ISO_IMAGE): $(boot_dir) $(BUILT_IMG)
+$(ISO_IMAGE): $(boot_dir) 
+	ifeq ($(BLISS_CHANGELOG),true) 
+	@echo ----- Generate Bliss Changelog ------
+		$(hide) ./vendor/bliss/tools/changelog
+		$(hide) mv $(PRODUCT_OUT)/Changelog.txt $(PRODUCT_OUT)/Changelog-$(BLISS_VERSION).txt
+		$(hide) cp $(PRODUCT_OUT)/Changelog-$(BLISS_VERSION).txt $(PRODUCT_OUT)/system/etc/Changelog.txt
+	endif
+	$(BUILT_IMG)
 	@echo ----- Making iso image ------
 	$(hide) sed -i "s|\(Installation CD\)\(.*\)|\1 $(VER)|; s|CMDLINE|$(BOARD_KERNEL_CMDLINE)|" $</isolinux/isolinux.cfg
 	$(hide) sed -i "s|VER|$(VER)|; s|CMDLINE|$(BOARD_KERNEL_CMDLINE)|" $</boot/grub/grub.cfg
@@ -89,9 +96,15 @@ rpm: $(wildcard $(LOCAL_PATH)/rpm/*) $(BUILT_IMG)
 	mv $$OUT/rpm/RPMS/*/*.rpm $$OUT
 
 # Note: requires dosfstools
-EFI_IMAGE := $(PRODUCT_OUT)/$(TARGET_PRODUCT).img
+EFI_IMAGE := $(PRODUCT_OUT)/$(BLISS_VERSION).img
 ESP_LAYOUT := $(LOCAL_PATH)/editdisklbl/esp_layout.conf
 $(EFI_IMAGE): $(wildcard $(LOCAL_PATH)/boot/boot/*/*) $(BUILT_IMG) $(ESP_LAYOUT) | $(edit_mbr)
+	ifeq ($(BLISS_CHANGELOG),true) 
+	# Generate Bliss Changelog
+		$(hide) ./vendor/bliss/tools/changelog
+		$(hide) mv $(PRODUCT_OUT)/Changelog.txt $(PRODUCT_OUT)/Changelog-$(BLISS_VERSION).txt
+		$(hide) cp $(PRODUCT_OUT)/Changelog-$(BLISS_VERSION).txt $(PRODUCT_OUT)/system/etc/Changelog.txt
+	endif
 	$(hide) sed "s|VER|$(VER)|; s|CMDLINE|$(BOARD_KERNEL_CMDLINE)|" $(<D)/grub.cfg > $(@D)/grub.cfg
 	$(hide) size=0; \
 	for s in `du -sk $^ | awk '{print $$1}'`; do \
