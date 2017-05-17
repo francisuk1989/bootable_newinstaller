@@ -10,7 +10,7 @@
 # with Android-x86 project.
 #
 
-PATH=/sbin:/bin:/system/bin:/system/xbin; export PATH
+PATH=/su/bin:/sbin:/bin:/system/bin:/system/xbin; export PATH
 
 # configure debugging output
 if [ -n "$DEBUG" ]; then
@@ -78,19 +78,53 @@ check_root()
 	else
 		dev=$1
 	fi
-	try_mount ro $dev /mnt || return 1
+	if [ -b "/dev/$mnt" ]; then
+		try_mount rw /dev/$mnt /mnt
+	else
+		try_mount rw $dev /mnt || return 1
+	fi
 	if [ -n "$iso" -a -e /mnt/$iso ]; then
 		mount --move /mnt /iso
 		mkdir /mnt/iso
 		mount -o loop /iso/$iso /mnt/iso
 		SRC=iso
 	elif [ ! -e /mnt/$SRC/$RAMDISK ]; then
-		return 1
+		if [ ! -d /mnt/$SRC/ramdisk ]; then
+			return 1
+		fi
 	fi
-	zcat /mnt/$SRC/$RAMDISK | cpio -id > /dev/null
+	if [ -d /mnt/$SRC/ramdisk ]; then
+		cd /
+		if [ ! -e /mnt/$SRC/ramdisk/init ]; then
+			cd android
+			zcat /mnt/$SRC/$RAMDISK | cpio -id > /dev/null
+			cd /
+			cp -f -a /android/. /mnt/$SRC/ramdisk
+		fi
+		umount -l /android
+		mount -o bind /mnt/$SRC/ramdisk /android
+		cd android
+	else
+		zcat /mnt/$SRC/$RAMDISK | cpio -id > /dev/null
+	fi
 	if [ -e /mnt/$SRC/system.sfs ]; then
 		mount -o loop,noatime /mnt/$SRC/system.sfs /sfs
 		mount -o loop,noatime /sfs/system.img system
+		if [ -e /mnt/system.img ]; then
+			if [ -d /mnt/f2fs ]; then
+				mount -t f2fs -o rw /mnt/system.img /mnt/f2fs
+				cp -Rpf /android/system/. /mnt/f2fs
+				umount /mnt/f2fs
+				rm -r /mnt/f2fs
+				mv /mnt/$SRC/system.sfs /mnt/$SRC/1system.sfs
+				mksquashfs /mnt/system.img /mnt/$SRC/system.sfs
+				rm /mnt/system.img
+				umount /android/system
+				umount /sfs
+				mount -o loop,noatime /mnt/$SRC/system.sfs /sfs
+				mount -o loop,noatime /sfs/system.img system
+			fi
+		fi
 	elif [ -e /mnt/$SRC/system.img ]; then
 		remount_rw
 		mount -o loop,noatime /mnt/$SRC/system.img system
@@ -100,6 +134,93 @@ check_root()
 	else
 		rm -rf *
 		return 1
+	fi
+	mount -o loop,noatime /mnt/modules.sfs system/lib/modules
+	mount -o bind /mnt/modules system/lib/modules
+	mount -o loop,noatime /mnt/firmware.sfs system/lib/firmware
+	mount -o bind /mnt/firmware system/lib/firmware
+	if [ -d /mnt/$SRC/su ]; then
+		mkdir su
+		mount --bind /mnt/$SRC/su su
+		ln -s /android/su /su
+	elif [ -e /mnt/$SRC/su.img ]; then
+		mkdir su
+		mount -o loop,noatime /mnt/$SRC/su.img su
+		ln -s /android/su /su
+	fi
+	cp -f -a sbin/. su/sbin
+	mount -o bind su/sbin sbin
+	mount -o bind su/fstab.android_x86 fstab.android_x86
+	mount -o bind su/fstab.android_x86_64 fstab.android_x86_64
+	if [ ! -e "su/init.rc" ]; then
+		cp init.rc su/init.rc
+		echo "
+# earliest possible SuperSU daemon launch, with fallback to service
+on post-fs-data
+    # HTC
+    exec /sbin/launch_daemonsu.sh post-fs-data
+    # Proper devices
+    exec u:r:init:s0 root root -- /sbin/launch_daemonsu.sh post-fs-data
+
+# launch SuperSU daemon
+service daemonsu /sbin/launch_daemonsu.sh service
+    class late_start
+    user root
+    seclabel u:r:init:s0
+    oneshot
+
+# Triggers
+
+on post-fs
+    start magisk_pfs
+    wait /dev/.magisk.unblock 20
+    rm /dev/.magisk.unblock
+
+on post-fs-data
+    start magisk_pfsd
+    wait /dev/.magisk.unblock 40
+    rm /dev/.magisk.unblock
+
+on property:magisk.restart_pfsd=1
+    trigger post-fs-data
+
+# Services
+
+# launch post-fs script
+service magisk_pfs /sbin/magic_mask.sh post-fs
+    user root
+    seclabel u:r:su:s0
+    oneshot
+
+# launch post-fs-data script
+service magisk_pfsd /sbin/magic_mask.sh post-fs-data
+    user root
+    seclabel u:r:su:s0
+    oneshot
+
+# launch late_start script
+service magisk_service /sbin/magic_mask.sh service
+    class late_start
+    user root
+    seclabel u:r:su:s0
+    oneshot
+" >> su/init.rc
+	fi
+	mount -o bind su/init.rc init.rc
+	if [ ! -e "su/build.prop" ]; then
+		cp system/build.prop su/build.prop
+		echo "ro.sf.lcd_density=240
+sleep.earlysuspend=0
+sleep.state=disabled" >> su/build.prop
+	fi
+	mount -o bind su/build.prop system/build.prop
+	mount -o bind su/etc/init.sh system/etc/init.sh
+	mount -o bind su/etc/modules.blacklist system/etc/modules.blacklist
+	mount -o bind su/lib/egl system/lib/egl
+	mount -o bind su/lib/dri system/lib/dri
+	if [ -b "/dev/$system" ]; then
+		umount -l system
+		busybox mount -o noatime /dev/$system system
 	fi
 	mkdir -p mnt
 	echo " found at $1"
@@ -117,8 +238,10 @@ remount_rw()
 debug_shell()
 {
 	if [ -x system/bin/sh ]; then
-		echo Running MirBSD Korn Shell...
-		USER="($1)" system/bin/sh -l 2>&1
+		if [ 0$DEBUG -gt 1 ]; then
+			echo Running MirBSD Korn Shell...
+			USER="($1)" system/bin/sh -l 2>&1
+		fi
 	else
 		echo Running busybox ash...
 		sh 2>&1
@@ -154,6 +277,8 @@ done
 ln -s mnt/$SRC /src
 ln -s android/system /
 ln -s ../system/lib/firmware ../system/lib/modules /lib
+touch /.ash_history
+mount -o bind /mnt/.ash_history /.ash_history
 
 if [ -n "$INSTALL" ]; then
 	zcat /src/install.img | ( cd /; cpio -iud > /dev/null )
@@ -169,18 +294,18 @@ if [ -x system/bin/ln -a \( -n "$DEBUG" -o -n "$BUSYBOX" \) ]; then
 	hash -r
 fi
 
+# ensure keyboard driver is loaded
+[ -n "$INSTALL" -o -n "$DEBUG" ] && busybox modprobe -a atkbd hid-apple
+
+if [ 0$DEBUG -gt 1 ]; then
+	echo -e "\nType 'exit' to continue booting...\n"
+	debug_shell debug-found
+fi
+
 # load scripts
 for s in `ls /scripts/* /src/scripts/*`; do
 	test -e "$s" && source $s
 done
-
-# ensure keyboard driver is loaded
-[ -n "$INSTALL" -o -n "$DEBUG" ] && auto_detect &
-
-if [ 0$DEBUG -gt 0 ]; then
-	echo -e "\nType 'exit' to continue booting...\n"
-	debug_shell debug-found
-fi
 
 # A target should provide its detect_hardware function.
 # On success, return 0 with the following values set.
@@ -192,6 +317,9 @@ fi
 load_modules
 mount_data
 mount_sdcard
+create_su
+check_ota
+convert_f2fs
 setup_tslib
 setup_dpi
 post_detect
