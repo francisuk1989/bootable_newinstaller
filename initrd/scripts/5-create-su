@@ -1,0 +1,56 @@
+#
+#
+#
+
+create_su()
+{
+	if [ -e /mnt/su.zip ]; then
+		if [ -e system/bin/app_process64 ]; then
+			unzip -o /mnt/su.zip -d /tmp
+			mkdir /su
+			mkdir /su/bin
+			mkdir /su/xbin
+			mkdir /su/xbin_bind
+			mkdir /su/lib
+			mkdir /su/su.d
+			mkdir /su/sbin
+			mkdir /su/etc
+			cp /tmp/x64/su /su/bin/su
+			cp /tmp/x64/su /su/bin/daemonsu
+			cp /tmp/x64/sukernel /su/bin/sukernel
+			cp /tmp/x64/supolicy /su/bin/supolicy_wrapped
+			ln -s /su/bin/daemonsu /su/bin/supolicy
+			cp /tmp/x64/libsupol.so /su/lib
+			cp /tmp/common/launch_daemonsu.sh /su/sbin
+			chmod -R 0755 /su
+			make_ext4fs -l 96M /mnt/$SRC/su.img /su
+			cp -R -f -a /su /mnt/$SRC/
+			mv /mnt/su.zip /mnt/$SRC/su.zip
+			cp /tmp/common/Superuser.apk /android/data/SuperSU.apk
+			reboot -f
+		else
+			unzip -o /mnt/su.zip -d /tmp
+			mkdir /su
+			mkdir /su/bin
+			mkdir /su/xbin
+			mkdir /su/xbin_bind
+			mkdir /su/lib
+			mkdir /su/su.d
+			mkdir /su/sbin
+			mkdir /su/etc
+			mkdir /su/xposed
+			cp /tmp/x86/su.pie /su/bin/su
+			cp /tmp/x86/su.pie /su/bin/daemoonsu
+			cp /tmp/x86/sukernel /su/bin/supolicy_wrapped
+			ln -s /su/bin/daemonsu /su/bin/supolicy
+			cp /tmp/x86/libsupol.so /su/lib
+			cp /tmp/common/launch_daemonsu.sh /su/sbin
+			chmod -R 0755 /su
+			make_ext4fs -l 96M /mnt/$SRC/su.img /su
+			cp -R -f -a /su /mnt/$SRC/
+			mv /mnt/su.zip /mnt/$SRC/su.zip
+			cp /tmp/common/Superuser.apk /android/data/SuperuSU.apk
+			reboot -f
+		fi
+	fi
+}
