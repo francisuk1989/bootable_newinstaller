@@ -1,0 +1,5 @@
+[gerrit]
+host=review-x86.blissroms.com
+port=29420
+project=bootable_newinstaller.git
+defaultbranch=nougat-x86
