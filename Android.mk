@@ -25,10 +25,10 @@ include $(BUILD_HOST_EXECUTABLE)
 
 VER ?= $$(date +"%F")
 
-$(shell echo "OpenThos Release Note" >$(PRODUCT_OUT)/system/ReleaseNote.txt)
+$(shell echo "Bliss-x86 Release Note" >$(PRODUCT_OUT)/system/ReleaseNote.txt)
 $(shell echo "" >>$(PRODUCT_OUT)/system/ReleaseNote.txt)
-$(shell echo "OpenThos is modern desktop OS based on android" >>$(PRODUCT_OUT)/system/ReleaseNote.txt)
-$(shell echo "Rleased by: Tsinghua University" >>$(PRODUCT_OUT)/system/ReleaseNote.txt)
+$(shell echo "Bliss-x86 is modern desktop OS based on android" >>$(PRODUCT_OUT)/system/ReleaseNote.txt)
+$(shell echo "Rleased by: Team Bliss" >>$(PRODUCT_OUT)/system/ReleaseNote.txt)
 $(shell echo "Build Date:`date`" >>$(PRODUCT_OUT)/system/ReleaseNote.txt)
 $(shell echo "version:"`curl -sf -L http://dev.openthos.org/openthos/oto_ota.ver|\
 	awk -F "=" '{if(NR==1){gsub("\\.","",$$2);ver=$$2+1;print int(ver/100)"."int(ver%100/10)"."ver%100%10}}'`\
@@ -39,11 +39,9 @@ $(shell date "+%Y.%m.%d" >> $(PRODUCT_OUT)/system/version)
 
 # use squashfs for iso, unless explictly disabled
 ifneq ($(USE_SQUASHFS),0)
-MKSQUASHFS = $(shell which mksquashfs)
+MKSQUASHFS = $$(which mksquashfs)
 
 define build-squashfs-target
-	$(if $(shell $(MKSQUASHFS) -version | grep "version [0-3].[0-9]"),\
-		$(error Your mksquashfs is too old to work with kernel 2.6.29. Please upgrade to squashfs-tools 4.0))
 	$(hide) $(MKSQUASHFS) $(1) $(2) -noappend
 endef
 endif
@@ -129,7 +127,7 @@ $(ISO_IMAGE): $(boot_dir) $(BUILT_IMG)
 	@echo -e "\n\n$@ is built successfully.\n\n"
 
 # Note: requires dosfstools
-EFI_IMAGE := $(PRODUCT_OUT)/$(TARGET_PRODUCT).img
+EFI_IMAGE := $(PRODUCT_OUT)/$(BLISS_VERSION).img
 ESP_LAYOUT := $(LOCAL_PATH)/editdisklbl/esp_layout.conf
 $(EFI_IMAGE): $(wildcard $(LOCAL_PATH)/boot/efi/*/*) $(BUILT_IMG) $(ESP_LAYOUT) | $(edit_mbr)
 	$(hide) sed "s|VER|$(VER)|; s|CMDLINE|$(BOARD_KERNEL_CMDLINE)|" $(<D)/grub.cfg > $(@D)/grub.cfg
