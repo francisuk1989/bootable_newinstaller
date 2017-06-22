@@ -16,13 +16,13 @@ mount_data()
 		if [ $type = "ntfs" ];then
 			mkdir /tmp/ntfs
 			ntfs-3g  $disk /tmp/ntfs
-			if [ ! -d /tmp/ntfs/openthos ];then
-				mkdir /tmp/ntfs/openthos
-				mount -o bind /tmp/ntfs/openthos /android/data
+			if [ ! -d /tmp/ntfs/bliss_x86 ];then
+				mkdir /tmp/ntfs/bliss_x86
+				mount -o bind /tmp/ntfs/bliss_x86 /android/data
 				umount /tmp
 				return 0
 			fi
-			mount -o loop /tmp/ntfs/openthos/data.img /android/data
+			mount -o loop /tmp/ntfs/bliss_x86/data.img /android/data
 			umount /tmp
 			return 0
 		fi

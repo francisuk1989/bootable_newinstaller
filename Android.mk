@@ -25,9 +25,9 @@ include $(BUILD_HOST_EXECUTABLE)
 
 VER ?= $$(date +"%F")
 
-$(shell echo "Bliss-x86 Release Note" >$(PRODUCT_OUT)/system/ReleaseNote.txt)
+$(shell echo "bliss_x86 Release Note" >$(PRODUCT_OUT)/system/ReleaseNote.txt)
 $(shell echo "" >>$(PRODUCT_OUT)/system/ReleaseNote.txt)
-$(shell echo "Bliss-x86 is modern desktop OS based on android" >>$(PRODUCT_OUT)/system/ReleaseNote.txt)
+$(shell echo "bliss_x86 is modern desktop OS based on android" >>$(PRODUCT_OUT)/system/ReleaseNote.txt)
 $(shell echo "Rleased by: Team Bliss" >>$(PRODUCT_OUT)/system/ReleaseNote.txt)
 $(shell echo "Build Date:`date`" >>$(PRODUCT_OUT)/system/ReleaseNote.txt)
 $(shell echo "version:"`curl -sf -L http://dev.openthos.org/openthos/oto_ota.ver|\
@@ -151,32 +151,32 @@ REFIND=efi.tar.bz2
 OTO_IMAGE := $(PRODUCT_OUT)/$(TARGET_PRODUCT)_oto.img
 ESP_LAYOUT := $(LOCAL_PATH)/editdisklbl/esp_layout.conf
 $(OTO_IMAGE): $(wildcard $(LOCAL_PATH)/boot/efi/*/*) $(OTO_BUILT_IMG) $(DATA_IMG) $(ESP_LAYOUT) | $(edit_mbr)
-	$(shell if [ ! -d  $(@D)/OpenThos ];then mkdir $(@D)/OpenThos;fi)
+	$(shell if [ ! -d  $(@D)/bliss_x86 ];then mkdir $(@D)/bliss_x86;fi)
 	@tar jcf $(REFIND) -C $(<D)/../../../install/refind efi
-	@mv $(REFIND) $(PRODUCT_OUT)/OpenThos/
-	@cp $(<D)/../../../install/refind/boto_linux.conf $(PRODUCT_OUT)/OpenThos/
-	$(shell cp $(OTO_BUILT_IMG) $(DATA_IMG) $(PRODUCT_OUT)/OpenThos/ -f)
-	$(shell mv $(PRODUCT_OUT)/OpenThos/oto_initrd.img $(PRODUCT_OUT)/OpenThos/initrd.img -f)
+	@mv $(REFIND) $(PRODUCT_OUT)/bliss_x86/
+	@cp $(<D)/../../../install/refind/boto_linux.conf $(PRODUCT_OUT)/bliss_x86/
+	$(shell cp $(OTO_BUILT_IMG) $(DATA_IMG) $(PRODUCT_OUT)/bliss_x86/ -f)
+	$(shell mv $(PRODUCT_OUT)/bliss_x86/oto_initrd.img $(PRODUCT_OUT)/bliss_x86/initrd.img -f)
 	@echo $(<D)   $(@D)
 	#$(hide) sed "s|VER|$(VER)|; s|CMDLINE|$(BOARD_KERNEL_CMDLINE)|" $(<D)/../../../otoinit/grub.cfg > $(@D)/grub.cfg
 	$(hide) size=0; \
 	for s in `du -sk $^ | awk '{print $$1}'`; do \
 		size=$$(($$size+$$s)); \
         done; \
-	s=`du -sk $(@D)/OpenThos/$(REFIND)|awk '{print $$1}'`;size=$$(($$size+$$s + 8096)); \
+	s=`du -sk $(@D)/bliss_x86/$(REFIND)|awk '{print $$1}'`;size=$$(($$size+$$s + 8096)); \
 	size=$$(($$(($$(($$(($$(($$size + $$(($$size / 100)))) - 1)) / 32)) + 1)) * 32)); \
 	rm -f $@.fat; mkdosfs -n OTO_INSTDSK -C $@.fat $$size
-	mcopy -Qsi $@.fat $(<D)/../../../install/refind/efi $(PRODUCT_OUT)/OpenThos ::
+	mcopy -Qsi $@.fat $(<D)/../../../install/refind/efi $(PRODUCT_OUT)/bliss_x86 ::
 	#$(hide) mcopy -Qoi $@.fat $(@D)/grub.cfg ::efi/boot
 	$(hide) cat /dev/null > $@; $(edit_mbr) -l $(ESP_LAYOUT) -i $@ esp=$@.fat
 	$(hide) rm -f $@.fat
 
 VERSION_FILE=$(LOCAL_PATH)/../../bootable/newinstaller/otoinit/version
 UPDATE_LIST=$(LOCAL_PATH)/../../bootable/newinstaller/otoinit/update.list
-UPDATE=openthos
-VERSION:=$(shell cat $(VERSION_FILE)|grep OpenThos|awk '{print $$2;}')
+UPDATE=bliss_x86
+VERSION:=$(shell cat $(VERSION_FILE)|grep bliss_x86|awk '{print $$2;}')
 
-UPDATE_IMG:= $(addprefix $(PRODUCT_OUT)/OpenThos/, $(shell cat $(UPDATE_LIST)))
+UPDATE_IMG:= $(addprefix $(PRODUCT_OUT)/bliss_x86/, $(shell cat $(UPDATE_LIST)))
 UPDATE_ZIP := $(PRODUCT_OUT)/$(UPDATE)_$(VERSION).zip
 $(UPDATE_ZIP): $(VERSION_FILE) $(UPDATE_LIST) $(OTO_IMAGE)
 	$(hide) rm -rf $@

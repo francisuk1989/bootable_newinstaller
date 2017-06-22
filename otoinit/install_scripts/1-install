@@ -13,10 +13,10 @@ tempfile=/tmp/temp-$$
 menufile=/tmp/menu-$$
 MOUNT="/mnt/data"
 CPIO=cpio
-asrc="OpenThos"
-SRC="livemedia/OpenThos"
+asrc="bliss_x86"
+SRC="livemedia/bliss_x86"
 files="/mnt/$SRC/install.img /mnt/$SRC/kernel /mnt/$SRC/initrd.img /mnt/$SRC/ramdisk.img"
-grubcfg=/hd/OpenThos/boto_linux.conf
+grubcfg=/hd/bliss_x86/boto_linux.conf
 bootdisk=""
 try_mount()
 {
@@ -182,7 +182,7 @@ select_dev()
 	} END {
 		printf("\"Create/Modify partitions\" \"\"\n\"Detect devices\" \"\"")
 	}' > $menufile
-	choose "Choose Partition" "Please select a partition to install Bliss-x86 EFI partition:"
+	choose "Choose Partition" "Please select a partition to install bliss_x86 EFI partition:"
 	return $retval
 }
 select_data_dev()
@@ -217,7 +217,7 @@ select_data_dev()
 		printf("\" \"\"\n")
 	} END {
 	}' > $menufile
-	choose "Choose Partition" "Please select a partition to install Bliss-x86 DATA:"
+	choose "Choose Partition" "Please select a partition to install bliss_x86 DATA:"
 	return $retval
 }
 
@@ -251,7 +251,7 @@ select_system_dev()
 		printf("\" \"\"\n")
 	} END {
 	}' > $menufile
-	choose "Choose Partition" "Please select a partition to install Bliss-x86 System:"
+	choose "Choose Partition" "Please select a partition to install bliss_x86 System:"
 	return $retval
 }
 progress_bar()
@@ -283,8 +283,8 @@ create_boto_data_img()
 	dialog --title " Confirm " --yesno \
 		"\nThe installer is going to create a disk image to save the user data.\ndefault space is 20G.\n\nAre you sure to create the image?" 11 62
 	if [ $? -eq 0 ]; then
-		create_boto_img 20 $MOUNT/openthos/data.img
-		losetup /dev/loop6 $MOUNT/openthos/data.img
+		create_boto_img 20 $MOUNT/bliss_x86/data.img
+		losetup /dev/loop6 $MOUNT/bliss_x86/data.img
 		make_ext4fs -L /data /dev/loop6 > /dev/tty6
 		[ $? -ne 0 ] && dialog --msgbox "\n Failed to create data.img." 7 33
 	else
@@ -323,13 +323,13 @@ boto_install_to()
 
 
 	#dialog --title " Confirm " --no-label Skip  --yesno \
-	#	"\n Do you want to install Bliss-x86" 7 39
+	#	"\n Do you want to install bliss_x86" 7 39
 	#install refind tool
 	tar -xvf /mnt/$SRC/efi.tar.bz2 -C /hd/ > /dev/null
 	mv /hd/efi/boot /hd/efi/boto
 
 	UUID=`blkid /dev/$1|awk -F "UUID" '{print $2;}'|awk -F "\"" '{print $2;}'`
-	CMD="quiet BOOT_MODE=hdboot RAMDISK_HD_UUID=$UUID RAMDISK_IMG=OpenThos/ramdisk.img"
+	CMD="quiet BOOT_MODE=hdboot RAMDISK_HD_UUID=$UUID RAMDISK_IMG=bliss_x86/ramdisk.img"
         bootdisk=/dev/`echo "$1"|tr -d "0-9"`
 	part=`echo "$1"|tr -d "a-z"`
 	
@@ -391,9 +391,9 @@ boto_data_install_to()
 
 	UUID=`blkid /dev/$1|awk -F "UUID" '{print $2;}'|awk -F "\"" '{print $2;}'`
 	CMD="$CMD DATA_HD_UUID=$UUID"
-	echo "\"Bliss-x86\"" \"$CMD\" > $grubcfg
-	echo "\"Bliss-x86 DEBUG\"" \"$CMD DEBUG=1\" >> $grubcfg
-	efibootmgr -c -d $bootdisk -p $part -L Bliss-x86 -l /efi/boto/bootx64.efi
+	echo "\"bliss_x86\"" \"$CMD\" > $grubcfg
+	echo "\"bliss_x86 DEBUG\"" \"$CMD DEBUG=1\" >> $grubcfg
+	efibootmgr -c -d $bootdisk -p $part -L bliss_x86 -l /efi/boto/bootx64.efi
 
 	dialog --infobox "\n Syncing data to disk..." 5 30
 	sleep 1
@@ -472,7 +472,7 @@ select_whole_dev()
 		choice=`awk '{ print $1 }' $menufile`
 		retval=0
 	else
-		choose "Choose Drive" "Please select a drive to Install Bliss-x86:"
+		choose "Choose Drive" "Please select a drive to Install bliss_x86:"
 	fi
 }
 convert_to_gpt()
@@ -552,19 +552,19 @@ install_system()
 	tar -xvf /mnt/$SRC/efi.tar.bz2 -C /hd/ > /dev/null
 	mv /hd/efi/boot /hd/efi/boto
 	UUID=`blkid $1"1"|awk -F "UUID" '{print $2;}'|awk -F "\"" '{print $2;}'`
-	CMD="quiet BOOT_MODE=hdboot RAMDISK_HD_UUID=$UUID RAMDISK_IMG=OpenThos/ramdisk.img SYSTEM_HD_UUID=$SUUID"
+	CMD="quiet BOOT_MODE=hdboot RAMDISK_HD_UUID=$UUID RAMDISK_IMG=bliss_x86/ramdisk.img SYSTEM_HD_UUID=$SUUID"
         bootdisk=$1
 
 	sync;sync;sync
-	mkdir $MOUNT/openthos
-	dd if=/dev/zero of=$MOUNT/openthos/data.img bs=1 count=0 seek=50G
-	losetup /dev/loop6 $MOUNT/openthos/data.img
+	mkdir $MOUNT/bliss_x86
+	dd if=/dev/zero of=$MOUNT/bliss_x86/data.img bs=1 count=0 seek=50G
+	losetup /dev/loop6 $MOUNT/bliss_x86/data.img
 	mke2fs -F -t ext4 -L data /dev/loop6 > /dev/tty6
 	UUID=`blkid "$1"3|awk -F "UUID" '{print $2;}'|awk -F "\"" '{print $2;}'`
 	CMD="$CMD DATA_HD_UUID=$UUID"
-	echo "\"Bliss-x86\"" \"$CMD\" > $grubcfg
-	echo "\"Bliss-x86 DEBUG\"" \"$CMD DEBUG=1\" >> $grubcfg
-	efibootmgr -c -d $bootdisk -p 1 -L Bliss-x86 -l /efi/boto/bootx64.efi
+	echo "\"bliss_x86\"" \"$CMD\" > $grubcfg
+	echo "\"bliss_x86 DEBUG\"" \"$CMD DEBUG=1\" >> $grubcfg
+	efibootmgr -c -d $bootdisk -p 1 -L bliss_x86 -l /efi/boto/bootx64.efi
 	sync
 }
 earse_all_partition()
@@ -578,7 +578,7 @@ earse_all_partition()
 }
 auto_install()
 {
-	dialog --title "Auto Install Bliss-x86" --defaultno --yesno "will ERASE whole hard drive,Continue?" 5 45
+	dialog --title "Auto Install bliss_x86" --defaultno --yesno "will ERASE whole hard drive,Continue?" 5 45
 	if [ $? -eq 0 ];then
 		select_whole_dev || rebooting
 		earse_all_partition $choice
@@ -630,14 +630,14 @@ dialog --title "Manual Install Guide" --yes-label "Understand" --no-label "Cance
 }
 user_guide()
 {
-	#dialog --title "Install Bliss-x86 Guide" --yes-label Auto\ Install --no-label Manuall\ Install --yesno "Dear User:\nAbout the Install method:\n    If you're a hacker,you can try \"Manually Install\".\n    else maybe you choose the \"Auto Install\".\n\nProvide some default parameter as guideline for manual installtion.\n    1.Bliss-x86 EFI partition\n    expect you choose 8G size as default for store system file.we don't change it normally\n\n    2.Bliss-x86 DATA partition\n    expect you choose 100G size as default for store your private data" 25 70
+	#dialog --title "Install bliss_x86 Guide" --yes-label Auto\ Install --no-label Manuall\ Install --yesno "Dear User:\nAbout the Install method:\n    If you're a hacker,you can try \"Manually Install\".\n    else maybe you choose the \"Auto Install\".\n\nProvide some default parameter as guideline for manual installtion.\n    1.bliss_x86 EFI partition\n    expect you choose 8G size as default for store system file.we don't change it normally\n\n    2.bliss_x86 DATA partition\n    expect you choose 100G size as default for store your private data" 25 70
 	#[ $? -eq 1 ] && return 1
-	dialog --title "Install Bliss-x86 Guide" --yes-label Auto\ Install --no-label Manuall\ Install --yesno "\
+	dialog --title "Install bliss_x86 Guide" --yes-label Auto\ Install --no-label Manuall\ Install --yesno "\
 ------------------------------------------------------------------\n\
 |                          Install Method                        |\n\
 ------------------------------------------------------------------\n\
 Auto Install:\n\
-    will ERASE a whole hard disk to install Bliss-x86, you need to backup your private data\n\
+    will ERASE a whole hard disk to install bliss_x86, you need to backup your private data\n\
     ========================================================\n\
     |\/\/\/\/\/\/\/\/\/\ hard disk is erased \/\/\/\/\/\/\/|\n\
     ========================================================\n\
@@ -658,7 +658,7 @@ hd_manual_install()
 	until boto_install_hd; do
 		if [ $retval -eq 255 ]; then
 			dialog --title ' Error! ' --yes-label Retry --no-label Reboot \
-				--yesno '\nInstallation failed! Please check if you have enough free disk space to install Bliss-x86.' 8 51
+				--yesno '\nInstallation failed! Please check if you have enough free disk space to install bliss_x86.' 8 51
 			[ $? -eq 1 ] && rebooting
 		fi
 	done
@@ -677,7 +677,7 @@ hd_manual_install()
 		fi
 	done
 	#begin reboot system
-	sum=5;while [[ sum -gt 0 ]];do echo $sum;sum=`expr $sum - 1`;dialog --title " REBOOTING Bliss-x86" --infobox "\n        $sum" 7 30 ;sleep 1; done
+	sum=5;while [[ sum -gt 0 ]];do echo $sum;sum=`expr $sum - 1`;dialog --title " REBOOTING bliss_x86" --infobox "\n        $sum" 7 30 ;sleep 1; done
 	rebooting
 }
 hd_install()
@@ -685,7 +685,7 @@ hd_install()
 	user_guide
 	if [ $? -eq 1 ];then
 		hd_manual_install
-		sum=5;while [[ sum -gt 0 ]];do echo $sum;sum=`expr $sum - 1`;dialog --title " REBOOTING Bliss-x86" --infobox "\n        $sum" 7 30 ;sleep 1; done
+		sum=5;while [[ sum -gt 0 ]];do echo $sum;sum=`expr $sum - 1`;dialog --title " REBOOTING bliss_x86" --infobox "\n        $sum" 7 30 ;sleep 1; done
 	else 
 		auto_install
 	fi
