@@ -10,7 +10,7 @@
 
 rebooting()
 {
-	dialog --title " OPENTHOS Rebooting... " --nocancel --pause "" 8 41 1
+	dialog --title " Bliss-x86 Rebooting... " --nocancel --pause "" 8 41 1
 	sync
 	umount -a
 	reboot -f
@@ -80,7 +80,7 @@ update_to()
 
 	if [ !\( mountpoint -q /mnt -a -a $1/kernel \) ]; then
 		dialog --clear --title " Error " --defaultno --yesno \
-			"\n Cannot find OPENTHOS partition \n" 8 37
+			"\n Cannot find Bliss-x86 partition \n" 8 37
 		return 255
 	fi
 
@@ -159,7 +159,7 @@ do_update()
 	fi
 
 	dialog --title " Confirm " --no-label Skip --defaultno --yesno \
-		"\n Want to update newest OPENTHOS in $iso_file ?" 7 47
+		"\n Want to update newest Bliss-x86 in $iso_file ?" 7 47
 	if [ $? -ne 0 ]; then
 	    # don't want to update, change update file's last line conetent to -1
 		sed -i '$d' $detect_file
@@ -179,7 +179,7 @@ do_update()
         echo -2 >>$detect_file
         	
 		dialog --title ' Error! ' --yes-label Retry --no-label Reboot \
-			--yesno '\n Update failed! Please check enough free disk space to update newest OPENTHOS.' 8 51
+			--yesno '\n Update failed! Please check enough free disk space to update newest Bliss-x86.' 8 51
 		[ $? -eq 1 ] && rebooting
 	fi
 
@@ -206,7 +206,7 @@ update_detect()
 	echo update_detect ....
 	
 	if [ !\( mountpoint -q /mnt -a -e /mnt/android*/kernel \) ]; then
-		echo "Cannot find OPENTHOS partition "
+		echo "Cannot find Bliss-x86 partition "
 		return 255
 	fi
 	
@@ -219,7 +219,7 @@ update_detect()
 
 	     value=`tail -n 1 $detect_file`
 	     if [ "$value"x = "1"x -a -e $iso_file ]; then
-	         echo "Update newest OPENTHOS $iso_file... "   
+	         echo "Update newest Bliss-x86 $iso_file... "   
 	         do_update $adir
 	     fi
     done

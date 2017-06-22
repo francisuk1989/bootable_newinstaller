@@ -190,7 +190,7 @@ select_whole_dev()
 		choice=`awk '{ print $1 }' $menufile`
 		retval=0
 	else
-		choose "Choose Drive" "Please select a drive to Install OPENTHOS:"
+		choose "Choose Drive" "Please select a drive to Install Bliss-x86:"
 	fi
 }
 select_dev()
@@ -226,7 +226,7 @@ select_dev()
 	} END {
 		printf("\"Create/Modify partitions\" \"\"\n\"Detect devices\" \"\"")
 	}' > $menufile
-	choose "Choose Partition" "Please select a partition to install OPENTHOS "$1" partition:"
+	choose "Choose Partition" "Please select a partition to install Bliss-x86 "$1" partition:"
 	return $retval
 }
 
@@ -329,7 +329,7 @@ boto_install_to()
 	cd hd/$asrc
 	rm -rf system*
 	( ( cd /mnt/$SRC/; find $files | $CPIO -H newc -o ) | pv -ns ${size}k | ( $CPIO -iu > /dev/null; echo $? > /tmp/result )) 2>&1 \
-		| progress_bar "Installing OPENTHOS" "Expect to write $size KB..."
+		| progress_bar "Installing Bliss-x86" "Expect to write $size KB..."
 	result=$((`cat /tmp/result`*255))
 	#extract refind install zip
 	cd /hd/$asrc
@@ -375,9 +375,9 @@ boto_data_install_to()
 
 	UUID=`blkid /dev/$1|awk -F "UUID" '{print $2;}'|awk -F "\"" '{print $2;}'`
 	CMD="$CMD DATA_HD_UUID=$UUID DATA_IMG=openthos/data.img"
-	echo "\"OpenThos\"" \"$CMD\" > $grubcfg
-	echo "\"OpenThos DEBUG\"" \"$CMD DEBUG=1\" >> $grubcfg
-	efibootmgr -c -d $bootdisk -p $part -L OpenThos -l /efi/boto/bootx64.efi
+	echo "\"Bliss-x86\"" \"$CMD\" > $grubcfg
+	echo "\"Bliss-x86 DEBUG\"" \"$CMD DEBUG=1\" >> $grubcfg
+	efibootmgr -c -d $bootdisk -p $part -L Bliss-x86 -l /efi/boto/bootx64.efi
 
 	dialog --infobox "\n Syncing data to disk..." 5 30
 	sleep 1
@@ -499,7 +499,7 @@ install_system()
 		size=$(($size+$s))
 	done
 	( ( cd /mnt/$SRC/; find $files | $CPIO -H newc -o ) | pv -ns ${size}k | ( $CPIO -iu > /dev/null; echo $? > /tmp/result )) 2>&1 \
-		| progress_bar "Installing OPENTHOS" "Expect to write $size KB..."
+		| progress_bar "Installing Bliss-x86" "Expect to write $size KB..."
 	tar -xvf /mnt/$SRC/efi.tar.bz2 -C /hd/ > /dev/null
 	mv /hd/efi/boot /hd/efi/boto
 	UUID=`blkid $1"1"|awk -F "UUID" '{print $2;}'|awk -F "\"" '{print $2;}'`
@@ -514,9 +514,9 @@ install_system()
 	mke2fs -F -t ext4 -L data /dev/loop6 > /dev/tty6
 	UUID=`blkid "$1"2|awk -F "UUID" '{print $2;}'|awk -F "\"" '{print $2;}'`
 	CMD="$CMD DATA_HD_UUID=$UUID DATA_IMG=openthos/data.img"
-	echo "\"OpenThos\"" \"$CMD\" > $grubcfg
-	echo "\"OpenThos DEBUG\"" \"$CMD DEBUG=1\" >> $grubcfg
-	efibootmgr -c -d $bootdisk -p 1 -L OpenThos -l /efi/boto/bootx64.efi
+	echo "\"Bliss-x86\"" \"$CMD\" > $grubcfg
+	echo "\"Bliss-x86 DEBUG\"" \"$CMD DEBUG=1\" >> $grubcfg
+	efibootmgr -c -d $bootdisk -p 1 -L Bliss-x86 -l /efi/boto/bootx64.efi
 	sync
 }
 earse_all_partition()
@@ -530,7 +530,7 @@ earse_all_partition()
 }
 auto_install()
 {
-	dialog --title "Auto Install OPENTHOS" --defaultno --yesno "will ERASE whole hard drive,Continue?" 5 45
+	dialog --title "Auto Install Bliss-x86" --defaultno --yesno "will ERASE whole hard drive,Continue?" 5 45
 	if [ $? -eq 0 ];then
 		select_whole_dev || rebooting
 		earse_all_partition $choice
@@ -570,14 +570,14 @@ dialog --title "Manual Install Guide" --yes-label "Understand" --no-label "Cance
 }
 user_guide()
 {
-	#dialog --title "Install OpenThos Guide" --yes-label Auto\ Install --no-label Manuall\ Install --yesno "Dear User:\nAbout the Install method:\n    If you're a hacker,you can try \"Manually Install\".\n    else maybe you choose the \"Auto Install\".\n\nProvide some default parameter as guideline for manual installtion.\n    1.OPENTHOS EFI partition\n    expect you choose 8G size as default for store system file.we don't change it normally\n\n    2.OPENTHOS DATA partition\n    expect you choose 100G size as default for store your private data" 25 70
+	#dialog --title "Install Bliss-x86 Guide" --yes-label Auto\ Install --no-label Manuall\ Install --yesno "Dear User:\nAbout the Install method:\n    If you're a hacker,you can try \"Manually Install\".\n    else maybe you choose the \"Auto Install\".\n\nProvide some default parameter as guideline for manual installtion.\n    1.Bliss-x86 EFI partition\n    expect you choose 8G size as default for store system file.we don't change it normally\n\n    2.Bliss-x86 DATA partition\n    expect you choose 100G size as default for store your private data" 25 70
 	#[ $? -eq 1 ] && return 1
-	dialog --title "Install OpenThos Guide" --yes-label Auto\ Install --no-label Manuall\ Install --yesno "\
+	dialog --title "Install Bliss-x86 Guide" --yes-label Auto\ Install --no-label Manuall\ Install --yesno "\
 ------------------------------------------------------------------\n\
 |                          Install Method                        |\n\
 ------------------------------------------------------------------\n\
 Auto Install:\n\
-    will ERASE a whole hard disk to install OPENTHOS,you need to backup your private data\n\
+    will ERASE a whole hard disk to install Bliss-x86, you need to backup your private data\n\
     ========================================================\n\
     |\/\/\/\/\/\/\/\/\/\ hard disk is erased \/\/\/\/\/\/\/|\n\
     ========================================================\n\
@@ -598,7 +598,7 @@ hdimg_install()
 	user_guide
 	if [ $? -eq 1 ];then
 		manual_install
-		sum=5;while [[ sum -gt 0 ]];do echo $sum;sum=`expr $sum - 1`;dialog --title " REBOOTING OPENTHOS" --infobox "\n        $sum" 7 30 ;sleep 1; done
+		sum=5;while [[ sum -gt 0 ]];do echo $sum;sum=`expr $sum - 1`;dialog --title " REBOOTING Bliss-x86" --infobox "\n        $sum" 7 30 ;sleep 1; done
 	else 
 		auto_install
 	fi
