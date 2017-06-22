@@ -329,7 +329,7 @@ boto_install_to()
 	mv /hd/efi/boot /hd/efi/boto
 
 	UUID=`blkid /dev/$1|awk -F "UUID" '{print $2;}'|awk -F "\"" '{print $2;}'`
-	CMD="quiet androidboot.hardware=android_x86_64 BOOT_MODE=hdboot RAMDISK_HD_UUID=$UUID RAMDISK_IMG=OpenThos/ramdisk.img"
+	CMD="quiet BOOT_MODE=hdboot RAMDISK_HD_UUID=$UUID RAMDISK_IMG=OpenThos/ramdisk.img"
         bootdisk=/dev/`echo "$1"|tr -d "0-9"`
 	part=`echo "$1"|tr -d "a-z"`
 	
@@ -552,7 +552,7 @@ install_system()
 	tar -xvf /mnt/$SRC/efi.tar.bz2 -C /hd/ > /dev/null
 	mv /hd/efi/boot /hd/efi/boto
 	UUID=`blkid $1"1"|awk -F "UUID" '{print $2;}'|awk -F "\"" '{print $2;}'`
-	CMD="quiet androidboot.hardware=android_x86_64 BOOT_MODE=hdboot RAMDISK_HD_UUID=$UUID RAMDISK_IMG=OpenThos/ramdisk.img SYSTEM_HD_UUID=$SUUID"
+	CMD="quiet BOOT_MODE=hdboot RAMDISK_HD_UUID=$UUID RAMDISK_IMG=OpenThos/ramdisk.img SYSTEM_HD_UUID=$SUUID"
         bootdisk=$1
 
 	sync;sync;sync
