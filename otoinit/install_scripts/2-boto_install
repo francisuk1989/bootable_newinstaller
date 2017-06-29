@@ -156,7 +156,7 @@ boto_data_install_to()
 	cd /
 
 	UUID=`blkid $device|awk -F "UUID" '{print $2;}'|awk -F "\"" '{print $2;}'`
-	CMD="$CMD DATA_HD_UUID=$UUID DATA_IMG=openthos/data.img"
+	CMD="$CMD DATA_HD_UUID=$UUID DATA_IMG=openthos/data.img mem=6140M ramoops.mem_size=0x400000 ramoops.mem_address=0x17FC00000"
 	echo "\"OpenThos\"" \"$CMD\" > $bootconf
 	echo "\"OpenThos DEBUG\"" \"$CMD DEBUG=1\" >> $bootconf
 	efibootmgr -c -d $bootdisk -p $part -L OpenThos -l /efi/boto/bootx64.efi
