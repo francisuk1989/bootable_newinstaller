@@ -211,7 +211,8 @@ if [ 0$DEBUG -gt 1 ]; then
 fi
 
 [ "$SETUPWIZARD" = "0" ] && echo "ro.setupwizard.mode=DISABLED" >> default.prop
-
+[ "$SLEEP" = "1" ] && echo "sleep.earlysuspend=1" >> default.prop
+[ "$DC2P" = "1" ] && echo "poweroff.doubleclick=1" >> default.prop
 [ -n "$DEBUG" ] && SWITCH=${SWITCH:-chroot}
 
 # We must disable mdev before switching to Android
