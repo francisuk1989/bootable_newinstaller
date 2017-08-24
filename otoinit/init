@@ -598,7 +598,7 @@ debug_shell()
       :
     fi
 
-    mount -t tmpfs -o size=512M tmpfs data
+    mount -t tmpfs tmpfs data
 
     popd
 
@@ -622,7 +622,7 @@ debug_shell()
 	  mount -t $DATA_FS $DATA_PART $ANDROID_DIR/data
 	else
 	  dbg_echo "Evaluation mode failed."
-	  mount -t tmpfs -o size=512M tmpfs $ANDROID_DIR/data
+	  mount -t tmpfs tmpfs $ANDROID_DIR/data
 	fi
 
     fi
@@ -732,8 +732,15 @@ debug_shell()
   fi
 
   get_param_from_bootargs RECOVERY
-  if [ "$RECOVERY" = "1" ];then
-    rm -rf /android/data/*
+  if [ "$RECOVERY" = "1" -o -e /android/data/rec_reset ];then
+    recovery_hint
+    if [ $? -eq 0 ];then
+      for dir in `ls -A /android/data/|grep -v vendor`;do
+        rm -rf /android/data/$dir
+      done
+    elif [ -e /android/data/rec_reset ];then
+      rm /android/data/rec_reset
+    fi
   fi
 
 
@@ -751,14 +758,6 @@ debug_shell()
   setup_tslib
   setup_dpi
 #post_detect
-
-
-  if [ -e /android/data/rec_reset ]; then
-    rm -rf /android/data/*
-    rm -rf /cache/*
-  fi
-
-  chmod 777 /android/preinstall.sh
 
   if [ 0$DEBUG -gt 1 ]; then
     echo -e "\nUse Alt-F1/F2/F3 to switch between virtual consoles"
