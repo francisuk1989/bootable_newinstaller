@@ -20,8 +20,8 @@ EfiMountPoint=/hd/efi
 SysMountPoint=/hd/system
 DataMountPoint=/hd/data
 CPIO=cpio
-asrc="bliss_x86"
-SRC="livemedia/bliss_x86"
+asrc="OpenThos"
+SRC="livemedia/OpenThos"
 files="/mnt/$SRC/install.img /mnt/$SRC/kernel /mnt/$SRC/initrd.img /mnt/$SRC/ramdisk.img"
 bootconf=$EfiMountPoint/$asrc/boto_linux.conf
 source /scripts/install
@@ -279,7 +279,7 @@ hd_install_all(){
 }
 hd_auto_install()
 {
-	dialog --title "Auto Install bliss_x86" --defaultno --yesno "will ERASE whole hard drive,Continue?" 5 45
+	dialog --title "Auto Install OPENTHOS" --defaultno --yesno "will ERASE whole hard drive,Continue?" 5 45
 	if [ $? -eq 0 ];then
 		select_whole_dev || rebooting
 		rebuild_all_partition /dev/$choice
@@ -336,7 +336,7 @@ hd_user_guide()
 |                          Install Method                        |\n\
 ------------------------------------------------------------------\n\
 Auto Install:\n\
-    will ERASE a whole hard disk to install bliss_x86, you need to backup your private data\n\
+    will ERASE a whole hard disk to install OPENTHOS,you need to backup your private data\n\
     ========================================================\n\
     |\/\/\/\/\/\/\/\/\/\ hard disk is erased \/\/\/\/\/\/\/|\n\
     ========================================================\n\
@@ -357,7 +357,7 @@ hd_manual_install()
 	until boto_install_hd; do
 		if [ $retval -eq 255 ]; then
 			dialog --title ' Error! ' --yes-label Retry --no-label Reboot \
-				--yesno '\nInstallation failed! Please check if you have enough free disk space to install bliss_x86.' 8 51
+				--yesno '\nInstallation failed! Please check if you have enough free disk space to install OPENTHOS.' 8 51
 			[ $? -eq 1 ] && rebooting
 		fi
 	done
@@ -389,7 +389,7 @@ hd_install()
 	hd_user_guide
 	if [ $? -eq 1 ];then
 		hd_manual_install
-		sum=5;while [[ sum -gt 0 ]];do echo $sum;sum=`expr $sum - 1`;dialog --title " REBOOTING bliss_x86" --infobox "\n        $sum" 7 30 ;sleep 1; done
+		sum=5;while [[ sum -gt 0 ]];do echo $sum;sum=`expr $sum - 1`;dialog --title " REBOOTING OPENTHOS" --infobox "\n        $sum" 7 30 ;sleep 1; done
 	else 
 		hd_auto_install
 	fi

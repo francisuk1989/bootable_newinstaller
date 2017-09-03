@@ -16,7 +16,7 @@ EfiMountPoint=/hd/efi
 DataMountPoint=/hd/data
 DataImgMountPoint=/hd/dataimg
 CPIO=cpio
-SRC="livemedia/bliss_x86"
+SRC="livemedia/OpenThos"
 files="kernel install.img initrd.img ramdisk.img system.*"
 asrc="OpenThos"
 bootconf=$EfiMountPoint/OpenThos/boto_linux.conf
@@ -108,7 +108,7 @@ boto_install_to()
 	cd $EfiMountPoint/$asrc
 	rm -rf system*
 	( ( cd /mnt/$SRC/; find $files | $CPIO -H newc -o ) | pv -ns ${size}k | ( $CPIO -iu > /dev/null; echo $? > /tmp/result )) 2>&1 \
-		| progress_bar "Installing bliss_x86" "Expect to write $size KB..."
+		| progress_bar "Installing OPENTHOS" "Expect to write $size KB..."
 	result=$((`cat /tmp/result`*255))
 	#extract refind install zip
 	cd $EfiMountPoint/$asrc
@@ -124,7 +124,7 @@ boto_install_to()
 	bootdisk=`echo "$device"|tr -d "0-9"`
 	part=`echo "$device"|tr -cd "0-9"`
 
-	#finish install bliss_x86 EFI partition
+	#finish install openthos EFI partition
 	dialog --infobox "\n Syncing to disk..." 5 27
 	sleep 1
 	sync
@@ -245,7 +245,7 @@ install_system()
 		mv $EfiMountPoint/efi/boto/fallback_x64.efi $EfiMountPoint/efi/boot/bootx64.efi
 	fi
 	UUID=`blkid $1"1"|awk -F "UUID" '{print $2;}'|awk -F "\"" '{print $2;}'`
-	CMD="quiet BOOT_MODE=hdimgboot RAMDISK_HD_UUID=$UUID RAMDISK_IMG=bliss_x86/ramdisk.img SYSTEM_HD_UUID=$UUID SYSTEM_IMG=bliss_x86/system.sfs"
+	CMD="quiet androidboot.hardware=android_x86_64 BOOT_MODE=hdimgboot RAMDISK_HD_UUID=$UUID RAMDISK_IMG=OpenThos/ramdisk.img SYSTEM_HD_UUID=$UUID SYSTEM_IMG=OpenThos/system.sfs"
 	bootdisk=$1
 
 	sync;sync;sync
@@ -284,7 +284,7 @@ hgimg_install_system(){
 }
 auto_install()
 {
-	dialog --title "Auto Install bliss_x86" --defaultno --yesno "will ERASE whole hard drive,Continue?" 5 45
+	dialog --title "Auto Install OPENTHOS" --defaultno --yesno "will ERASE whole hard drive,Continue?" 5 45
 	if [ $? -eq 0 ];then
 		select_whole_dev || rebooting
 		rebuild_all_partition /dev/$choice
@@ -330,7 +330,7 @@ user_guide()
 |                          Install Method                        |\n\
 ------------------------------------------------------------------\n\
 Auto Install:\n\
-    will ERASE a whole hard disk to install bliss_x86, you need to backup your private data\n\
+    will ERASE a whole hard disk to install OPENTHOS,you need to backup your private data\n\
     ========================================================\n\
     |\/\/\/\/\/\/\/\/\/\ hard disk is erased \/\/\/\/\/\/\/|\n\
     ========================================================\n\

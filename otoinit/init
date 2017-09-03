@@ -558,9 +558,9 @@ debug_shell()
   
   case $BOOT_MODE in
   install)
-    dbg_echo "base init: will boot bliss_x86 in install mode"
+    dbg_echo "base init: will boot OpenThos in install mode"
     mount_live_media $LIVEMEDIA_DIR
-    zcat $LIVEMEDIA_DIR/bliss_x86/install.img | cpio -id  >/dev/null 2>&1
+    zcat $LIVEMEDIA_DIR/OpenThos/install.img | cpio -id  >/dev/null 2>&1
     insmod bin/atkbd.ko
 
     ln -s /bin/mke2fs /bin/make_ext4fs
@@ -581,17 +581,17 @@ debug_shell()
     ;;
     
   liveboot)
-    dbg_echo "base init: will boot bliss_x86 in live mode."
+    dbg_echo "base init: will boot OpenThos in live mode."
     mount_live_media $LIVEMEDIA_DIR
     
     pushd $ANDROID_DIR
-    zcat $LIVEMEDIA_DIR/bliss_x86/ramdisk.img | cpio -id  >/dev/null 2>&1
-    if [ -e "$LIVEMEDIA_DIR/bliss_x86/system.img" ]; then
+    zcat $LIVEMEDIA_DIR/OpenThos/ramdisk.img | cpio -id  >/dev/null 2>&1
+    if [ -e "$LIVEMEDIA_DIR/OpenThos/system.img" ]; then
       prepare_mountpoint $ANDROID_DIR/system
-      mount -t ext4 -o loop,ro $LIVEMEDIA_DIR/bliss_x86/system.img system
-    elif [ -e  "$LIVEMEDIA_DIR/bliss_x86/system.sfs" ]; then
+      mount -t ext4 -o loop,ro $LIVEMEDIA_DIR/OpenThos/system.img system
+    elif [ -e  "$LIVEMEDIA_DIR/OpenThos/system.sfs" ]; then
       prepare_mountpoint /mnt/system.sfs
-      mount -o loop $LIVEMEDIA_DIR/bliss_x86/system.sfs /mnt/system.sfs
+      mount -o loop $LIVEMEDIA_DIR/OpenThos/system.sfs /mnt/system.sfs
       prepare_mountpoint $ANDROID_DIR/system
       mount -t ext4 -o loop /mnt/system.sfs/system.img system
     else
@@ -617,7 +617,7 @@ debug_shell()
           dbg_echo "Evaluation mode success: $DATA_PART"
 	  DATA_UUID=`blkid "$DATA_PART"|awk -F "UUID" '{print $2;}'|awk -F "\"" '{print $2;}'`
           data_uuid="DATA_HD_UUID=$DATA_UUID"
-          sed -i "1 s/\"$/ $data_uuid\"/" $LIVEMEDIA_DIR/bliss_x86/boto_linux.conf
+          sed -i "1 s/\"$/ $data_uuid\"/" $LIVEMEDIA_DIR/OpenThos/boto_linux.conf
           sync
 	  mount -t $DATA_FS $DATA_PART $ANDROID_DIR/data
 	else
@@ -629,24 +629,24 @@ debug_shell()
     ;;
     
   evalboot)
-    dbg_echo "base init: will boot bliss_x86 in evaluation mode."
+    dbg_echo "base init: will boot OpenThos in evaluation mode."
     mount_eval_media $LIVEMEDIA_DIR
 
     pushd $ANDROID_DIR
-    zcat $LIVEMEDIA_DIR/bliss_x86/ramdisk.img | cpio -id  >/dev/null 2>&1
-    if [ -e "$LIVEMEDIA_DIR/bliss_x86/system.img" ]; then
+    zcat $LIVEMEDIA_DIR/OpenThos/ramdisk.img | cpio -id  >/dev/null 2>&1
+    if [ -e "$LIVEMEDIA_DIR/OpenThos/system.img" ]; then
       prepare_mountpoint $ANDROID_DIR/system
-      mount -o loop,ro $LIVEMEDIA_DIR/bliss_x86/system.img system
-    elif [ -e  "$LIVEMEDIA_DIR/bliss_x86/system.sfs" ]; then
+      mount -o loop,ro $LIVEMEDIA_DIR/OpenThos/system.img system
+    elif [ -e  "$LIVEMEDIA_DIR/OpenThos/system.sfs" ]; then
       prepare_mountpoint /mnt/system.sfs
-      mount -o loop $LIVEMEDIA_DIR/bliss_x86/system.sfs /mnt/system.sfs
+      mount -o loop $LIVEMEDIA_DIR/OpenThos/system.sfs /mnt/system.sfs
       prepare_mountpoint $ANDROID_DIR/system
       mount -o loop /mnt/system.sfs/system.img system
     else
       :
     fi
 
-    mount -o loop $LIVEMEDIA_DIR/bliss_x86/data.img data
+    mount -o loop $LIVEMEDIA_DIR/OpenThos/data.img data
 
     popd
 
@@ -654,8 +654,8 @@ debug_shell()
 
   hdimgboot)
     source /scripts/oto_update.sh
-    bliss_x86_update
-    dbg_echo "base init: will boot bliss_x86 from local disk images."
+    openthos_update
+    dbg_echo "base init: will boot OpenThos from local disk images."
 
     get_param_from_bootargs RAMDISK_IMG
     mount_os_img RAMDISK $RAMDISK_IMG
@@ -670,10 +670,10 @@ debug_shell()
     
   hdboot)
     source /scripts/oto_update.sh
-    bliss_x86_update
+    openthos_update
     pushd $ANDROID_DIR
 
-    dbg_echo "base init: will boot bliss_x86 from local disk partitions."
+    dbg_echo "base init: will boot OpenThos from local disk partitions."
 
     get_param_from_bootargs RAMDISK_IMG
     mount_os_img RAMDISK $RAMDISK_IMG
