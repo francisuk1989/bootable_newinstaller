@@ -203,14 +203,14 @@ do_update()
 # by: David Chan (chanuei@sina.com)
 # date: 2016-09-20
 #
-# Func: bliss_x86_update_stage2
-bliss_x86_update_stage2()
+# Func: openthos_update_stage2
+openthos_update_stage2()
 {
   dbg_echo "Update file found, your os will be updated."
   mkdir -p $TMP_DIR
   load_update_desc
   if [ $? -ne 0 ]; then
-    echo hdimg_update: Failed to update bliss_x86
+    echo hdimg_update: Failed to update OpenThos
     return 1
   fi
   
@@ -227,9 +227,9 @@ bliss_x86_update_stage2()
   echo $updateRet >> $UPDATE_INFO
   
   if [ $updateRet -eq 0 ]; then
-    dbg_echo "bliss_x86_update: Updating process succeeded."
+    dbg_echo "openthos_update: Updating process succeeded."
   else
-    echo bliss_x86_update: Updating process failed.
+    echo openthos_update: Updating process failed.
   fi
 }
 
@@ -238,7 +238,7 @@ bliss_x86_update_stage2()
 # date: 2016-09-13
 #
 # Func: update_detect
-bliss_x86_update()
+openthos_update()
 {
   dbg_echo "oto_update: Checking ..."
   
@@ -280,7 +280,7 @@ bliss_x86_update()
     
     case $? in
     $UPDATE_MISS)
-      echo "bliss_x86_update: It seems that the system should be updated, but no update package found."
+      echo "openthos_update: It seems that the system should be updated, but no update package found."
       ;;
     $UPDATE_SHOULD)
 
@@ -291,18 +291,18 @@ bliss_x86_update()
 
       dbg_echo "now is at `pwd`"
       pushd /
-      zcat /mnt/ramdisk/bliss_x86/install.img | cpio -id
+      zcat /mnt/ramdisk/OpenThos/install.img | cpio -id
       popd
       which dialog
       if [ $? -eq 0 ]; then
-        dialog --backtitle "bliss_x86" --title "OTA Update hooker" --infobox "Will upgrade your system now!" 32 80
+        dialog --backtitle "OpenThos" --title "OTA Update hooker" --infobox "Will upgrade your system now!" 32 80
         sleep 2s
-        bliss_x86_update_stage2
-#        bliss_x86_update_stage2 | dialog --nook --backtitle "bliss_x86" --title "Now Upgrading ..." --programbox 32 80
-        dialog --backtitle "bliss_x86" --title "OTA Update hooker" --infobox "\n\n  Upgrade process finished! \n  Now, just enjoy your new bliss_x86 system!" 32 80
+        openthos_update_stage2
+#        openthos_update_stage2 | dialog --nook --backtitle "OpenThos" --title "Now Upgrading ..." --programbox 32 80
+        dialog --backtitle "OpenThos" --title "OTA Update hooker" --infobox "\n\n  Upgrade process finished! \n  Now, just enjoy your new OpenThos system!" 32 80
         sleep 2s
       else
-        bliss_x86_update_stage2
+        openthos_update_stage2
       fi
       if [ -d /mnt/data/dalvik-cache ]; then
         rm -rf /mnt/data/dalvik-cache/*
@@ -310,7 +310,7 @@ bliss_x86_update()
 	rm -rf /mnt/data/media/0/System_Os/*
       ;;
     *)
-      dbg_echo "bliss_x86_update: No update to be done."
+      dbg_echo "openthos_update: No update to be done."
       ;;
     esac
  
