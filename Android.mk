@@ -134,7 +134,7 @@ $(EFI_IMAGE): $(wildcard $(LOCAL_PATH)/boot/efi/*/*) $(BUILT_IMG) $(ESP_LAYOUT) 
 OTO_BUILT_IMG := $(addprefix $(PRODUCT_OUT)/,ramdisk.img install.img system.sfs)
 OTO_BUILT_IMG += $(if $(TARGET_PREBUILT_KERNEL),$(TARGET_PREBUILT_KERNEL),$(PRODUCT_OUT)/kernel)
 REFIND=$(PRODUCT_OUT)/efi.tar.bz2
-OTO_IMAGE := $(PRODUCT_OUT)/$(TARGET_PRODUCT)_oto.img
+OTO_IMAGE := $(PRODUCT_OUT)/$(BLISS_VERSION)_oto.img
 ESP_LAYOUT := $(LOCAL_PATH)/editdisklbl/esp_layout.conf
 $(OTO_IMAGE): $(wildcard $(LOCAL_PATH)/install/refind/*) $(OTO_INITRD_RAMDISK) $(OTO_BUILT_IMG) $(DATA_IMG) $(ESP_LAYOUT) | $(edit_mbr)
 	$(hide) tar jcf $(REFIND) -C $(<D) efi
