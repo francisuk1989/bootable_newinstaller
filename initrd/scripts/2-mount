@@ -1,6 +1,6 @@
 #
 # By Chih-Wei Huang <cwhuang@linux.org.tw>
-# Last updated 2014/04/09
+# Last updated 2017/04/23
 #
 # License: GNU Public License
 # We explicitely grant the right to use the scripts
@@ -13,13 +13,16 @@ mount_data()
 	[ -n "$DATA" ] && blk=`basename $DATA` || blk=
 	if [ -b "/dev/$blk" ]; then
 		[ ! -e /dev/block/$blk ] && ln /dev/$blk /dev/block
-		mount /dev/block/$blk data
+		mount -o noatime /dev/block/$blk data
+	elif [ "$DATA" = "9p" ]; then
+		modprobe 9pnet_virtio
+		mount -t 9p -o trans=virtio data data -oversion=9p2000.L,posixacl,cache=loose
 	elif [ -d /mnt/$SRC/data ]; then
 		remount_rw
 		mount --bind /mnt/$SRC/data data
 	elif [ -f /mnt/$SRC/data.img ]; then
 		remount_rw
-		mount -o loop /mnt/$SRC/data.img data
+		mount -o loop,noatime /mnt/$SRC/data.img data
 	else
 		device_mount_data || mount -t tmpfs tmpfs data
 	fi

@@ -1,6 +1,6 @@
 #
 # By Chih-Wei Huang <cwhuang@linux.org.tw>
-# Last updated 2012/07/07
+# Last updated 2017/07/18
 #
 # License: GNU Public License
 # We explicitely grant the right to use the scripts
@@ -60,7 +60,12 @@ partition_drive()
 		choose "Choose Drive" "Please select a drive to edit partitions:"
 	fi
 	if [ $retval -eq 0 ]; then
-		cfdisk /dev/$choice
+		dialog --title " Confirm " --defaultno --yesno "\n Do you want to use GPT?" 7 29
+		if [ $? -eq 0 ]; then
+			cgdisk /dev/$choice
+		else
+			cfdisk /dev/$choice
+		fi
 		if [ $? -eq 0 ]; then
 			retval=1
 		else
@@ -72,12 +77,28 @@ partition_drive()
 
 select_dev()
 {
-	fdisk -l | grep ^/dev | cut -b6-12,55- | awk '{
-		if (!match($2, "Extended")) {
-			printf("\"%-28s", $0)
-			system("echo -n `cat /sys/block/*/"$1"/../device/model`")
-			printf("\" \"\"\n")
-		}
+	blkid | grep -v -E "^/dev/block/|^/dev/loop" | cut -b6- | sort | awk '{
+		t="unknown"
+		for (i = NF; i > 1; --i)
+			if (match($i, "^TYPE")) {
+				t=$i
+				break
+			}
+		gsub(/TYPE=|"/, "", t)
+		printf("%s\t%s\n", $1, t)
+	}' > $tempfile
+
+	lsblk=`ls /sys/block | grep -v -E "loop|ram|sr|boot|rpmb"`
+	for d in $lsblk; do
+		for i in /sys/block/$d/$d*; do
+			echo $i | grep -q -E "boot|rpmb" && continue
+			[ -d $i ] && ( grep "`basename $i:`" $tempfile || echo "`basename $i` unknown" )
+		done
+	done | awk '{
+		sub(/:/, "", $1)
+		printf("\"%-13s%-17s", $1, $2)
+		system("cd /sys/block; for f in "$1"/device/model "$1"/device/name */"$1"/../device/model */"$1"/../device/name; do [ -e $f ] && echo -n `cat $f` && break; done")
+		printf("\" \"\"\n")
 	} END {
 		printf("\"Create/Modify partitions\" \"\"\n\"Detect devices\" \"\"")
 	}' > $menufile
@@ -90,21 +111,26 @@ progress_bar()
 	dialog --clear --title " $1 " --gauge "\n $2" 8 70
 }
 
+convert_fs()
+{
+	if blkid /dev/$1 | grep -q ext2; then
+		/system/bin/tune2fs -j /dev/$1
+		e2fsck -fy /dev/$1
+	fi
+	if blkid /dev/$1 | grep -q ext3; then
+		/system/bin/tune2fs -O extents,uninit_bg /dev/$1
+		e2fsck -fy /dev/$1
+	fi
+}
+
 format_fs()
 {
 	local cmd
-	echo -e '"Do not format" ""\next4 ""\next3 ""\next2 ""\nntfs ""\nfat32 ""' > $menufile
+	echo -e '"Do not format" ""\next4 ""\nntfs ""\nfat32 ""' > $menufile
 	choose "Choose filesystem" "Please select a filesystem to format $1:"
 	case "$choice" in
 		ext4)
-			dialog --title " Notice " --msgbox "\nAndroid-x86 bootloader can't support booting from ext4. You need to install a bootloader supporting ext4 manually, e.g., grub2." 9 49
 			cmd="make_ext4fs -L"
-			;;
-		ext3)
-			cmd="mke2fs -jL"
-			;;
-		ext2)
-			cmd="mke2fs -L"
 			;;
 		ntfs)
 			cmd="mkntfs -fL"
@@ -116,7 +142,7 @@ format_fs()
 			;;
 	esac
 	if [ -n "$cmd" ]; then
-		dialog --title " Confirm " --no-label Skip --yesno \
+		dialog --title " Confirm " --defaultno --yesno \
 			"\n You chose to format $1 to $choice.\n All data in that partition will LOSE.\n\n Are you sure to format the partition $1?" 10 51
 		[ $? -ne 0 ] && return 1
 		$cmd Android-x86 /dev/$1 | awk '{
@@ -124,6 +150,10 @@ format_fs()
 			if (match($0, "done"))
 				printf("%d\n", i+=33)
 		}' | progress_bar "Formatting" "Formatting partition $1..."
+	elif blkid /dev/$1 | grep -q ext[23]; then
+		dialog --clear --title " Warning " --yesno \
+			"\nYou chose to install android-x86 to an ext2/3 filesystem. We suggest you convert it to ext4 for better reliability and performance." 9 62
+		[ $? -eq 0 ] && convert_fs $1
 	fi
 }
 
@@ -163,6 +193,17 @@ create_winitem()
 	fi
 }
 
+check_data_img()
+{
+	losetup /dev/loop7 data.img
+	if blkid /dev/loop7 | grep -q ext[23]; then
+		dialog --clear --title " Warning " --yesno \
+			"\nYour data.img is an ext2/3 filesystem. We suggest you convert it to ext4 for better reliability." 8 58
+		[ $? -eq 0 ] && convert_fs loop7
+	fi
+	losetup -d /dev/loop7
+}
+
 create_img()
 {
 	bname=`basename $2`
@@ -173,9 +214,9 @@ create_img()
 		rm -f $2
 	fi
 	dialog --title " Question " --nook --nocancel --inputbox \
-		"\nPlease input the size of the $bname in MB (max 2047):" 8 63 $1 2> $tempfile
+		"\nPlease input the size of the $bname in MB:" 8 63 $1 2> $tempfile
 	size=`cat $tempfile`
-	[ 0$size -le 0 -o 0$size -gt 2047 ] && size=2047
+	[ 0$size -le 0 ] && size=1024
 	( dd bs=1M count=$size if=/dev/zero | pv -ns ${size}m | dd of=$2 ) 2>&1 \
 		| progress_bar "Creating $bname" "Expect to write $size MB..."
 }
@@ -200,20 +241,39 @@ create_data_img()
 try_upgrade()
 {
 	[ -d $1 ] && return
-	PREV_VERS="4.4-r2 4.4-r1 4.4-RC2 4.4-RC1 4.4-test 4.3-test 4.2-test 4.0-r1 4.0-RC2 4.0-RC1"
+	PREV_VERS="$PREV_VERS 6.0-r2 6.0-r1 6.0-rc2 6.0-rc1 5.1-rc1 4.4-r5 4.4-r4 4.4-r3 4.4-r2 4.4-r1 4.4-RC2 4.4-RC1 4.4-test 4.3-test 4.2-test 4.0-r1 4.0-RC2 4.0-RC1"
 	for v in $PREV_VERS; do
-		prev=hd/android-$v
-		if [ -d $prev ]; then
-			dialog --title " Question " --yesno \
-				"\nAn older Android-x86 version $v is detected.\nWould you like to upgrade it?" 8 55
-			if [ $? -eq 0 ]; then
-				mv $prev $1
-				rm -rf $1/data/dalvik-cache/* $1/data/system/wpa_supplicant
-				sed -i 's/\(ctrl_interface=\)\(.*\)/\1wlan0/' $1/data/misc/wifi/wpa_supplicant.conf
-				break
-			fi
+		local prev
+		if [ -d hd/$v ]; then
+			prev=hd/$v
+		elif [ -d hd/android-$v ]; then
+			prev=hd/android-$v
+		else
+			continue
+		fi
+		dialog --title " Question " --yesno \
+			"\nAn older version $v is detected.\nWould you like to upgrade it?" 8 51
+		if [ $? -eq 0 ]; then
+			mv $prev $1
+			rm -rf $1/data/dalvik-cache/* $1/data/system/wpa_supplicant
+			sed -i 's/\(ctrl_interface=\)\(.*\)/\1wlan0/' $1/data/misc/wifi/wpa_supplicant.conf
+			break
 		fi
 	done
+}
+
+get_part_info()
+{
+	d=0
+	while [ 1 ]; do
+		h=`echo $d | awk '{ printf("%c", $1+97) }'`
+		for part in /sys/block/[shv]d$h/$1 /sys/block/mmcblk$d/$1 /sys/block/nvme0n$(($d+1))/$1; do
+			[ -d $part ] && break 2
+		done
+		d=$(($d+1))
+	done
+	p=`cat $part/partition`
+	disk=$(basename `dirname $part`)
 }
 
 install_to()
@@ -229,9 +289,11 @@ install_to()
 	done
 
 	fs=`cat /proc/mounts | grep /dev/$1 | awk '{ print $3 }'`
+	cmdline=`sed "s|\(initrd.*img\s*\)||; s|quiet\s*||; s|\(vga=\w\+\?\s*\)||; s|\(DPI=\w\+\?\s*\)||; s|\(INSTALL=\w\+\?\s*\)||; s|\(SRC=\S\+\?\s*\)||; s|\(DEBUG=\w\+\?\s*\)||; s|\(BOOT_IMAGE=\S\+\?\s*\)||; s|\(iso-scan/filename=\S\+\?\s*\)||;" /proc/cmdline`
 
-	asrc=android-$VER
-	[ "$fs" != "ext4" ] && dialog --title " Confirm " --no-label Skip --defaultno --yesno \
+	[ -n "$INSTALL_PREFIX" ] && asrc=$INSTALL_PREFIX || asrc=android-$VER
+	efi="`dmesg | grep EFI.VGA`"
+	[ -z "$efi" ] && dialog --title " Confirm " --no-label Skip --defaultno --yesno \
 		"\n Do you want to install boot loader GRUB?" 7 47
 	if [ $? -eq 0 ]; then
 		cp -af /grub /hd
@@ -277,11 +339,39 @@ install_to()
 		[ $? -ne 0 ] && return 255
 	fi
 
-	dialog --title " Question " --yesno \
+	[ -n "$efi" ] && dialog --title " Confirm " --no-label Skip --defaultno --yesno \
+		"\n Do you want to install EFI GRUB2?" 7 39
+	if [ $? -eq 0 ]; then
+		get_part_info $1
+		for i in /sys/block/$disk/$disk*; do
+			[ 0`cat $i/partition` -eq 1 ] && b=$i
+			[ $(blkid /dev/`basename $i` | grep -c vfat) -ne 0 ] && b=$i && break
+		done
+		boot=`basename $b`
+		mountpoint -q /hd && umount /hd
+		while [ 1 ]; do
+			try_mount rw /dev/$boot /hd && break
+			dialog --title " Confirm " --defaultno --yesno "\n Cannot mount /dev/$boot.\n Do you want to format it?" 8 37
+			[ $? -eq 0 ] && mkdosfs -n EFI /dev/$boot
+		done
+		cp -af /grub2/efi /hd
+		mkdir -p /hd/boot/grub
+		grubcfg=/hd/boot/grub/grub.cfg
+		echo -e "set timeout=5\n\n" > $grubcfg
+		echo -e "menuentry \"Android-x86 $VER\" {\n\tsearch --set=root --file /$asrc/kernel\n\tlinux /$asrc/kernel quiet $cmdline \n\tinitrd /$asrc/initrd.img\n}" >> $grubcfg
+		echo -e "menuentry \"Android-x86 $VER (DEBUG mode)\" {\n\tsearch --set=root --file /$asrc/kernel\n\tlinux /$asrc/kernel $cmdline DEBUG=2\n\tinitrd /$asrc/initrd.img\n}" >> $grubcfg
+		if [ -e /hd/EFI/Microsoft/Boot/bootmgfw.efi ]; then
+			echo -e "menuentry \"Windows (UEFI)\" {\n\tsearch --set=root --file /EFI/Microsoft/Boot/bootmgfw.efi\n\tchainloader /EFI/Microsoft/Boot/bootmgfw.efi\n}" >> $grubcfg
+		fi
+		mountpoint -q /hd && umount /hd
+		try_mount rw /dev/$1 /hd
+	fi
+
+	dialog --title " Question " --defaultno --yesno \
 		"\nDo you want to install /system directory as read-write?\n\nMaking /system be read-write is easier for debugging, but it needs more disk space and longer installation time." 10 61
 	instal_rw=$?
 
-	files="mnt/$SRC/kernel mnt/$SRC/initrd.img mnt/$SRC/ramdisk.img"
+	files="mnt/$SRC/kernel mnt/$SRC/initrd.img mnt/$SRC/$RAMDISK"
 	if [ $instal_rw -eq 0 ]; then
 		if [ "$fs" = "vfat" -o "$fs" = "fuseblk" ]; then
 			[ -e /sfs/system.img ] && sysimg="/sfs/system.img" || sysimg="mnt/$SRC/system.*"
@@ -305,15 +395,17 @@ install_to()
 	result=$((`cat /tmp/result`*255))
 
 	if [ $result -eq 0 ]; then
-		chmod 644 *
-		chown 0.0 *
 		for d in android mnt sfs ./$SRC; do
 			[ -d $d ] && mv $d/* . && rmdir $d
+		done
+		chown 0.0 *
+		for f in *; do
+			[ -d $f ] || chmod 644 $f
 		done
 
 		case "$fs" in
 			vfat|fuseblk)
-				create_data_img
+				[ -e data.img ] && check_data_img || create_data_img
 				;;
 			*)
 				mkdir -p data
@@ -321,6 +413,7 @@ install_to()
 		esac
 	fi
 
+	dialog --infobox "\n Syncing to disk..." 5 27
 	sync
 
 	return $result

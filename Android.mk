@@ -23,39 +23,16 @@ LOCAL_STATIC_LIBRARIES := libdiskconfig_host libcutils liblog
 edit_mbr := $(HOST_OUT_EXECUTABLES)/$(LOCAL_MODULE)
 include $(BUILD_HOST_EXECUTABLE)
 
-VER ?= $(shell date +"%F")
+VER ?= $$(date +"%F")
 
 # use squashfs for iso, unless explictly disabled
 ifneq ($(USE_SQUASHFS),0)
-MKSQUASHFS = $(shell which mksquashfs)
+MKSQUASHFS := $(MAKE_SQUASHFS)
 
 define build-squashfs-target
-	$(if $(shell $(MKSQUASHFS) -version | grep "version [0-3].[0-9]"),\
-		$(error Your mksquashfs is too old to work with kernel 2.6.29. Please upgrade to squashfs-tools 4.0))
-	$(hide) $(MKSQUASHFS) $(1) $(2) -noappend
+	$(hide) $(MKSQUASHFS) $(1) $(2) -noappend -comp gzip
 endef
 endif
-
-define check-density
-	eval d=$$(grep ^ro.sf.lcd_density $(INSTALLED_DEFAULT_PROP_TARGET) $(INSTALLED_BUILD_PROP_TARGET) | sed 's|\(.*\)=\(.*\)|\2|'); \
-	[ -z "$$d" ] || ( awk -v d=$$d ' BEGIN { \
-		if (d <= 180) { \
-			label="liveh"; dpi="HDPI"; \
-		} else { \
-			label="livem"; dpi="MDPI"; \
-		} \
-	} { \
-		if (match($$2, label)) \
-			s=5; \
-		else if (match($$0, dpi)) \
-			s=4; \
-		else \
-			s=0; \
-		for (i = 0; i < s; ++i) \
-			getline; \
-		gsub(" DPI=[0-9]*",""); print $$0; \
-	}' $(1) > $(1)_ && mv $(1)_ $(1) )
-endef
 
 initrd_dir := $(LOCAL_PATH)/initrd
 initrd_bin := \
@@ -63,6 +40,7 @@ initrd_bin := \
 	$(wildcard $(initrd_dir)/*/*)
 
 systemimg  := $(PRODUCT_OUT)/system.$(if $(MKSQUASHFS),sfs,img)
+$(if $(MKSQUASHFS),$(systemimg): | $(MKSQUASHFS))
 
 INITRD_RAMDISK := $(PRODUCT_OUT)/initrd.img
 $(INITRD_RAMDISK): $(initrd_bin) $(systemimg) $(TARGET_INITRD_SCRIPTS) | $(ACP) $(MKBOOTFS)
@@ -72,36 +50,48 @@ $(INITRD_RAMDISK): $(initrd_bin) $(systemimg) $(TARGET_INITRD_SCRIPTS) | $(ACP) 
 	ln -s /bin/ld-linux.so.2 $(TARGET_INSTALLER_OUT)/lib
 	mkdir -p $(addprefix $(TARGET_INSTALLER_OUT)/,android iso mnt proc sys tmp sfs hd)
 	echo "VER=$(VER)" > $(TARGET_INSTALLER_OUT)/scripts/00-ver
+	$(if $(INSTALL_PREFIX),echo "INSTALL_PREFIX=$(INSTALL_PREFIX)" >> $(TARGET_INSTALLER_OUT)/scripts/00-ver)
+	$(if $(PREV_VERS),echo "PREV_VERS=\"$(PREV_VERS)\"" >> $(TARGET_INSTALLER_OUT)/scripts/00-ver)
 	$(MKBOOTFS) $(TARGET_INSTALLER_OUT) | gzip -9 > $@
 
 INSTALL_RAMDISK := $(PRODUCT_OUT)/install.img
-$(INSTALL_RAMDISK): $(wildcard $(LOCAL_PATH)/install/*/*) | $(MKBOOTFS)
+$(INSTALL_RAMDISK): $(wildcard $(LOCAL_PATH)/install/*/* $(LOCAL_PATH)/install/*/*/*/*) | $(MKBOOTFS)
 	$(if $(TARGET_INSTALL_SCRIPTS),$(ACP) -p $(TARGET_INSTALL_SCRIPTS) $(TARGET_INSTALLER_OUT)/scripts)
 	$(MKBOOTFS) $(dir $(dir $(<D))) | gzip -9 > $@
 
 boot_dir := $(PRODUCT_OUT)/boot
-$(boot_dir): $(wildcard $(LOCAL_PATH)/boot/isolinux/*) $(systemimg) $(GENERIC_X86_CONFIG_MK) | $(ACP)
+$(boot_dir): $(shell find $(LOCAL_PATH)/boot -type f | sort -r) $(systemimg) $(INSTALL_RAMDISK) $(GENERIC_X86_CONFIG_MK) | $(ACP)
 	$(hide) rm -rf $@
 	$(ACP) -pr $(dir $(<D)) $@
+	$(ACP) -pr $(dir $(<D))../install/grub2/efi $@
 
 BUILT_IMG := $(addprefix $(PRODUCT_OUT)/,ramdisk.img initrd.img install.img) $(systemimg)
 BUILT_IMG += $(if $(TARGET_PREBUILT_KERNEL),$(TARGET_PREBUILT_KERNEL),$(PRODUCT_OUT)/kernel)
-
-ISO_IMAGE := $(PRODUCT_OUT)/$(TARGET_PRODUCT).iso
+OUT=$(abspath $(PRODUCT_OUT));
+ISO_IMAGE := $(PRODUCT_OUT)/$(BLISS_VERSION).iso
 $(ISO_IMAGE): $(boot_dir) $(BUILT_IMG)
 	@echo ----- Making iso image ------
-	$(hide) $(call check-density,$</isolinux/isolinux.cfg)
 	$(hide) sed -i "s|\(Installation CD\)\(.*\)|\1 $(VER)|; s|CMDLINE|$(BOARD_KERNEL_CMDLINE)|" $</isolinux/isolinux.cfg
+	$(hide) sed -i "s|VER|$(VER)|; s|CMDLINE|$(BOARD_KERNEL_CMDLINE)|" $</boot/grub/grub.cfg
 	genisoimage -vJURT -b isolinux/isolinux.bin -c isolinux/boot.cat \
-		-no-emul-boot -boot-load-size 4 -boot-info-table \
+		-no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot \
 		-input-charset utf-8 -V "Android-x86 LiveCD" -o $@ $^
-	$(hide) isohybrid $@ || echo -e "isohybrid not found.\nInstall syslinux 4.0 or higher if you want to build a usb bootable iso."
+	$(hide) isohybrid --uefi $@ || echo -e "isohybrid not found.\nInstall syslinux 4.0 or higher if you want to build a usb bootable iso."
 	@echo -e "\n\n$@ is built successfully.\n\n"
 
+rpm: $(wildcard $(LOCAL_PATH)/rpm/*) $(BUILT_IMG)
+	@echo ----- Making an rpm ------
+	OUT=$(abspath $(PRODUCT_OUT)); mkdir -p $$OUT/rpm/BUILD; rm -rf $$OUT/rpm/RPMS/*; $(ACP) $< $$OUT; \
+	rpmbuild -bb --target=$(if $(filter x86,$(TARGET_ARCH)),i686,x86_64) -D"cmdline $(BOARD_KERNEL_CMDLINE)" \
+		-D"_topdir $$OUT/rpm" -D"_sourcedir $$OUT" -D"systemimg $(notdir $(systemimg))" -D"ver $(VER)" \
+		$(if $(BUILD_NAME_VARIANT),-D"name $(BUILD_NAME_VARIANT)") \
+		-D"install_prefix $(if $(INSTALL_PREFIX),$(INSTALL_PREFIX),android-$(VER))" $(filter %.spec,$^); \
+	mv $$OUT/rpm/RPMS/*/*.rpm $$OUT
+
 # Note: requires dosfstools
-EFI_IMAGE := $(PRODUCT_OUT)/$(TARGET_PRODUCT).img
+EFI_IMAGE := $(PRODUCT_OUT)/$(BLISS_VERSION).img
 ESP_LAYOUT := $(LOCAL_PATH)/editdisklbl/esp_layout.conf
-$(EFI_IMAGE): $(wildcard $(LOCAL_PATH)/boot/efi/*/*) $(BUILT_IMG) $(ESP_LAYOUT) | $(edit_mbr)
+$(EFI_IMAGE): $(wildcard $(LOCAL_PATH)/boot/boot/*/*) $(BUILT_IMG) $(ESP_LAYOUT) | $(edit_mbr)
 	$(hide) sed "s|VER|$(VER)|; s|CMDLINE|$(BOARD_KERNEL_CMDLINE)|" $(<D)/grub.cfg > $(@D)/grub.cfg
 	$(hide) size=0; \
 	for s in `du -sk $^ | awk '{print $$1}'`; do \
@@ -109,12 +99,13 @@ $(EFI_IMAGE): $(wildcard $(LOCAL_PATH)/boot/efi/*/*) $(BUILT_IMG) $(ESP_LAYOUT) 
         done; \
 	size=$$(($$(($$(($$(($$(($$size + $$(($$size / 100)))) - 1)) / 32)) + 1)) * 32)); \
 	rm -f $@.fat; mkdosfs -n Android-x86 -C $@.fat $$size
-	$(hide) mcopy -Qsi $@.fat $(dir $(<D)) $(BUILT_IMG) ::
-	$(hide) mcopy -Qoi $@.fat $(@D)/grub.cfg ::efi/boot
+	$(hide) mcopy -Qsi $@.fat $(<D)/../../../install/grub2/efi $(BUILT_IMG) ::
+	$(hide) mmd -i $@.fat ::boot; mmd -i $@.fat ::boot/grub
+	$(hide) mcopy -Qoi $@.fat $(@D)/grub.cfg ::boot/grub
 	$(hide) cat /dev/null > $@; $(edit_mbr) -l $(ESP_LAYOUT) -i $@ esp=$@.fat
 	$(hide) rm -f $@.fat
 
-.PHONY: iso_img usb_img efi_img
+.PHONY: iso_img usb_img efi_img rpm
 iso_img: $(ISO_IMAGE)
 usb_img: $(ISO_IMAGE)
 efi_img: $(EFI_IMAGE)
