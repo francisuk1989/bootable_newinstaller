@@ -70,6 +70,7 @@ initrd_bin := \
 	$(wildcard $(initrd_dir)/*/*)
 local_dir := $(LOCAL_PATH)
 systemimg  := $(PRODUCT_OUT)/system.$(if $(MKSQUASHFS),sfs,img)
+$(if $(MKSQUASHFS),$(systemimg): | $(MKSQUASHFS))
 
 INITRD_RAMDISK := $(PRODUCT_OUT)/initrd.img
 $(INITRD_RAMDISK): $(initrd_bin) $(systemimg) $(TARGET_INITRD_SCRIPTS) | $(ACP) $(MKBOOTFS)
