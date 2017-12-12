@@ -101,7 +101,7 @@ $(boot_dir): $(wildcard $(LOCAL_PATH)/boot/isolinux/*) $(systemimg) $(GENERIC_X8
 BUILT_IMG := $(addprefix $(PRODUCT_OUT)/,ramdisk.img initrd.img install.img) $(systemimg)
 BUILT_IMG += $(if $(TARGET_PREBUILT_KERNEL),$(TARGET_PREBUILT_KERNEL),$(PRODUCT_OUT)/kernel)
 
-ISO_IMAGE := $(PRODUCT_OUT)/$(BLISS_VERSION).iso
+ISO_IMAGE := $(PRODUCT_OUT)/$(BLISS_VERSION)$(TARGET_PRODUCT).iso
 $(ISO_IMAGE): $(boot_dir) $(BUILT_IMG)
 	@echo ----- Making iso image ------
 	$(hide) $(call check-density,$</isolinux/isolinux.cfg)
@@ -113,7 +113,7 @@ $(ISO_IMAGE): $(boot_dir) $(BUILT_IMG)
 	@echo -e "\n\n$@ is built successfully.\n\n"
 
 # Note: requires dosfstools
-EFI_IMAGE := $(PRODUCT_OUT)/$(BLISS_VERSION).img
+EFI_IMAGE := $(PRODUCT_OUT)/$(BLISS_VERSION)$(TARGET_PRODUCT).img
 ESP_LAYOUT := $(LOCAL_PATH)/editdisklbl/esp_layout.conf
 $(EFI_IMAGE): $(wildcard $(LOCAL_PATH)/boot/efi/*/*) $(BUILT_IMG) $(ESP_LAYOUT) | $(edit_mbr)
 	$(hide) sed "s|VER|$(VER)|; s|CMDLINE|$(BOARD_KERNEL_CMDLINE)|" $(<D)/grub.cfg > $(@D)/grub.cfg
