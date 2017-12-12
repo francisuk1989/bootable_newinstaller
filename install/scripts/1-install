@@ -176,6 +176,7 @@ create_menulst()
 	create_entry "Android-x86 $VER (Debug mode no hwaccel)" DEBUG=2 HWACCEL=0 $cmdline
 	create_entry "Android-x86 $VER (Debug nomodeset)" nomodeset DEBUG=2 $cmdline
 	create_entry "Android-x86 $VER (Debug video=LVDS-1:d)" video=LVDS-1:d DEBUG=2 $cmdline
+	create_entry "Android-x86 $VER (Force Intel Graphics i915/i965)" i915.modeset=0 $cmdline
 }
 
 create_winitem()
